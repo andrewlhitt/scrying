@@ -1,10 +1,12 @@
 import numpy as np 
 from dataclasses import dataclass
 from bisect import bisect_left
+from skimage.segmentation import find_boundaries
 
 class Simulator: 
 	__arg_list = ['width','height','crystal_sides','shape_array','maximum_time',
-					'nucleation_rate','nucleation_rate_mode','maximum_crystals','center_mode','orientation_mode','nucleation_region_percent',
+					'nucleation_rate','nucleation_rate_mode','maximum_crystals','center_mode','nucleation_region_percent',
+					'orientation_mode','orientation_precision',
 					'growth_rate','growth_rate_mode','periodic_boundary',
 					'snapshot_mode','snapshot_time','snapshot_coverage','end_after_snapshot',
 					'save_evolution', 'random_seed']
@@ -20,10 +22,12 @@ class Simulator:
 	__angle_chiralities = ['cw','ccw']
 	__zero_directions = ['right','left','up', 'down']
 	__import_nucleation_data_final_column_types = ['time','size']
+	__get_grain_boundary_modes = ['all','internal','external']
 
 	def __init__(self, 
 		width: int = 128, height: int = 128, crystal_sides: int = 3, shape_array: np.array = None, maximum_time: int = 100, 
-		nucleation_rate: float = 1.0, nucleation_rate_mode: str = 'constant', maximum_crystals: int = 5, center_mode: str = 'anywhere', orientation_mode: str = 'random', nucleation_region_percent: float = 0.0,
+		nucleation_rate: float = 1.0, nucleation_rate_mode: str = 'constant', maximum_crystals: int = 5, center_mode: str = 'anywhere', nucleation_region_percent: float = 0.0,
+		orientation_mode: str = 'random', orientation_precision: int = 5, 
 		growth_rate: float = 1.0, growth_rate_mode: str = 'constant', periodic_boundary: bool = False, 
 		snapshot_mode: str = 'none', snapshot_time: int = 0, snapshot_coverage: float = 0.25, end_after_snapshot: bool = False, stop_nucleation_after_snapshot: bool = False,
 		save_evolution: bool = False, random_seed: int = None): 
@@ -38,7 +42,6 @@ class Simulator:
 		self.shape_array = shape_array 
 		if self.shape_array is not None: 
 			self.crystal_sides = self.shape_array.shape[0] 
-		# else: self.shape_array = self._generate_shape_array()# np.array() # TODO: replace this with a generated one
 		self.maximum_time = maximum_time 
 		
 		# nucleation parameters
@@ -47,6 +50,7 @@ class Simulator:
 		self.maximum_crystals = maximum_crystals
 		self.center_mode = center_mode.lower()
 		self.orientation_mode = orientation_mode.lower()
+		self.orientation_precision = orientation_precision
 		self.nucleation_region_percent = nucleation_region_percent
 
 		# growth parameters
@@ -114,8 +118,7 @@ class Simulator:
 		self._image = np.zeros((self.height,self.width),dtype=int)
 		self._crystals = list([None]) # this allows the list index to match the image label
 		self._current_crystals = 0 
-		self._primary_orientation = self._RNG.random()
-		self._orientations = set()
+		self._primary_orientation = round(self._RNG.random(),self.orientation_precision)
 		self._total_crystal_area = 0 
 		self.snapshot = np.zeros((self.height,self.width),dtype=int)
 		self._snapshot_taken = False 
@@ -212,8 +215,7 @@ class Simulator:
 		elif self.orientation_mode == 'updown': 
 			orientation_modifier = self._RNG.choice([0,1/(2*self.crystal_sides)])
 
-		new_orientation = (self._primary_orientation + orientation_modifier)%1
-		self._orientations.add(new_orientation)
+		new_orientation = round((self._primary_orientation + orientation_modifier)%1,self.orientation_precision)
 		return new_orientation
 
 	def _nucleate_new_crystal(self, center: tuple, orientation: float): 
@@ -241,7 +243,6 @@ class Simulator:
 								  candidate_points = dict())
 
 			self._crystals.append(new_crystal)
-			self._orientations.add(orientation)	
 			self._total_crystal_area += 1
 
 			for point in self._get_adjacent_points((0,0),self._current_crystals):
@@ -386,7 +387,29 @@ class Simulator:
 
 		self._imported_data = data 
 
+	# A 1D implementation of complete-linkage clustering 
+	# Assumes an ordered list of angles  
+	def _iteratively_clink_group(self, group: list, maximum_misorientation: float) -> list: 
+		group_diffs = np.diff(group)
+		clinked_groups = list([[e] for e in group])
+		finished_clinking = False
 
+		while not finished_clinking: 
+			if len(clinked_groups) == 1: break
+			# find most similar pair  
+			merge_index = np.argmin(group_diffs)
+			
+			# combine the two groups 
+			clinked_groups[merge_index].extend(clinked_groups[merge_index+1])
+			del clinked_groups[merge_index+1]
+			
+			# compare the maximum of each group with the minimum from the preceding group 
+			group_diffs = [clinked_groups[i+1][-1] - clinked_groups[i][0] for i in range(0,len(clinked_groups)-1)]
+
+			# check if no possible merges
+			if np.min(group_diffs) > maximum_misorientation: finished_clinking = True
+
+		return clinked_groups
 
 	# Data/Analysis functions
 	def export_nucleation_data(self,position_order: str = 'xy',
@@ -444,10 +467,81 @@ class Simulator:
 			print(f'WARNING: Time-series data has not been saved.')
 			return None
 
-	def get_grain_structure(self, maximum_misorientation: float = 0, symmetry: int = 1):
-		# in progress (as of Feb 26, 2024) 
-		pass 
+	def get_grain_structure(self, image: np.array, maximum_misorientation: float = 0, symmetry: int = 1) -> np.array:
+		symmetry_angle = round(1./symmetry,self.orientation_precision)
 		
+		crystal_to_orientation = dict({0:None})
+		orientations = set()
+		for i in range(1,len(self._crystals)): 
+			crystal_orientation = round((self._crystals[i].orientation)%(symmetry_angle),self.orientation_precision)
+			crystal_to_orientation[i] = crystal_orientation
+			orientations.add(crystal_orientation)
+		
+		sorted_orientations = sorted(list(orientations))
+
+		if maximum_misorientation > 0: 
+
+			# add the smallest angle + symmetry to check for adjacency across the modular boundary 
+			sorted_orientations.append(round(sorted_orientations[0] + symmetry_angle,self.orientation_precision))
+			
+			# do an initial pass to attempt to break up the full set
+			orientation_diffs = np.diff(sorted_orientations)
+			split_indices = [i+1 for i in range(orientation_diffs.shape[0]-1) if orientation_diffs[i] > maximum_misorientation]
+			initial_groups = [sorted_orientations[i:j] for i, j in zip([None]+split_indices, split_indices+[-1])]
+			
+			# if first and last groups are sufficiently similar, merge into one group
+			if (orientation_diffs[-1] < maximum_misorientation) and len(initial_groups) > 1:
+				initial_groups[0] = [orientation-symmetry_angle for orientation in initial_groups[-1]] + initial_groups[0]
+				del initial_groups[-1]
+			final_groups = list()
+			
+			for initial_group in initial_groups:
+				group_range = np.max(initial_group) - np.min(initial_group)
+
+				if group_range > maximum_misorientation:
+					# do complete-linkage agglomeration if necessary
+					clinked_groups = self._iteratively_clink_group(initial_group,maximum_misorientation)
+					final_groups.extend(clinked_groups)
+				else: 
+					final_groups.append(initial_group)
+
+			orientations_to_group = dict({None: 0})
+			for i in range(len(final_groups)): 
+				for j in range(len(final_groups[i])): orientations_to_group[(final_groups[i][j]%symmetry_angle)] = i+1
+
+		else: 
+			orientations_to_group = dict({None: 0})
+			for i in range(len(orientations)): orientations_to_group[sorted_orientations[i]] = i+1
+
+		# DSM on stackoverflow: https://stackoverflow.com/questions/16992713/translate-every-element-in-numpy-array-according-to-key
+		image_orientations = np.vectorize(crystal_to_orientation.get)(image)
+		image_groups = np.vectorize(orientations_to_group.get)(image_orientations)
+
+		return image_groups
+
+
+	# Finds specified boundaries within user-provided image 
+	# "internal" means that only the boundaries between crystals are shown
+	# "external" means that only boundaries between a crystal and the background are shown 
+	# "all" means that both internal and external boundaries are shown 
+	def get_grain_boundaries(self, image: np.array, mode: str ='all') -> np.array: 
+		self._verify_string_variable_setting('mode',mode,self.__get_grain_boundary_modes,'all')
+		if mode == 'external':
+			boundary_img = find_boundaries((image != 0),mode='inner',background=0)
+		elif mode == 'internal': 
+			external_boundaries = find_boundaries((image != 0),mode='inner',background=0)
+			all_boundaries = find_boundaries(image,mode='inner',background=0)
+			boundary_img = all_boundaries.astype('int') - external_boundaries.astype('int')
+		elif mode == 'all':
+			 boundary_img = find_boundaries(image,mode='inner',background=0)
+
+		return boundary_img 
+
+	# Returns the total length (in pixels) of the grain boundary for a given image
+	# # Boundaries are two pixels wide, 
+	def get_grain_boundary_length(self, image: np.array, mode: str ='all') -> int:
+		boundary_image = self.get_grain_boundaries(image,mode)
+		return int(np.sum(boundary_image))
 
 
 @dataclass
