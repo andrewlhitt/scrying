@@ -79,7 +79,7 @@ class Simulator:
 	def run_simulation(self, use_imported_data: bool = False): 
 
 		if use_imported_data and (self._imported_data is None): 
-			print(f'WARNING: No nucleation data has been imported. Use the import_nucleation_data(...) function before calling the simulation.')
+			print(f'WARNING: No nucleation data has been imported. Use the import_nucleation_data(...) function before calling run_simulation(...).')
 			return 
 
 		if use_imported_data and (self._imported_data[self._imported_data[:,3] >= self.maximum_time].shape[0] > 0): 
@@ -493,6 +493,7 @@ class Simulator:
 			if (orientation_diffs[-1] < maximum_misorientation) and len(initial_groups) > 1:
 				initial_groups[0] = [orientation-symmetry_angle for orientation in initial_groups[-1]] + initial_groups[0]
 				del initial_groups[-1]
+			
 			final_groups = list()
 			
 			for initial_group in initial_groups:
@@ -524,24 +525,25 @@ class Simulator:
 	# "internal" means that only the boundaries between crystals are shown
 	# "external" means that only boundaries between a crystal and the background are shown 
 	# "all" means that both internal and external boundaries are shown 
+	# Boundaries will be two pixels wide. 
 	def get_grain_boundaries(self, image: np.array, mode: str ='all') -> np.array: 
 		self._verify_string_variable_setting('mode',mode,self.__get_grain_boundary_modes,'all')
 		if mode == 'external':
-			boundary_img = find_boundaries((image != 0),mode='inner',background=0)
+			boundary_img = find_boundaries((image != 0),mode='thick')
 		elif mode == 'internal': 
-			external_boundaries = find_boundaries((image != 0),mode='inner',background=0)
-			all_boundaries = find_boundaries(image,mode='inner',background=0)
+			external_boundaries = find_boundaries((image != 0),mode='thick')
+			all_boundaries = find_boundaries(image,mode='thick')
 			boundary_img = all_boundaries.astype('int') - external_boundaries.astype('int')
 		elif mode == 'all':
-			 boundary_img = find_boundaries(image,mode='inner',background=0)
+			 boundary_img = find_boundaries(image,mode='thick')
 
 		return boundary_img 
 
 	# Returns the total length (in pixels) of the grain boundary for a given image
-	# # Boundaries are two pixels wide, 
+	# Boundaries will be two pixels wide, hence division by 2. 
 	def get_grain_boundary_length(self, image: np.array, mode: str ='all') -> int:
 		boundary_image = self.get_grain_boundaries(image,mode)
-		return int(np.sum(boundary_image))
+		return int(np.sum(boundary_image)/2)
 
 
 @dataclass
@@ -556,4 +558,35 @@ class Crystal:
 	areas: list 			# list(int): the area (in pixels) of the crystal at each time step
 	candidate_points: dict 	# dict(tuple->float) dictionary of relative points to calculated size 
 
+# a function used to generate a shape array from a list of points 
+def get_shape_array(points: list) -> np.array: 
+	looped_points = points.copy()
+	looped_points.append(points[0])
+	edge_vectors = [(np.subtract(looped_points[i+1],looped_points[i])) for i in range(len(points))] 
+	edge_vectors.append(edge_vectors[0]) # to allow for looping around the first corner 
 
+	vector_lengths = np.linalg.norm(edge_vectors,axis=1)
+
+	if np.any(vector_lengths == 0): 
+		print('WARNING: One of the sides of the specified polygon has a length of 0.')
+		return None
+
+	unit_vectors = edge_vectors/vector_lengths.reshape(-1,1) 
+
+	interior_angles = np.array([np.arccos(np.dot(unit_vectors[i+1,:],-unit_vectors[i,:]))/(2*np.pi) for i in range(len(points))])
+	central_angles = 1/2-interior_angles
+	if np.sum(central_angles) > 1: 
+		print('WARNING: The polygon specified by these input points is not convex.')
+		# return None
+	cumulative_angles = np.cumsum(central_angles)-central_angles[0]
+
+	center = np.mean(np.array(points),axis=0)
+
+	distances = [np.linalg.norm((np.cross(edge_vectors[i],looped_points[i]-center)))/np.linalg.norm(edge_vectors[i]) for i in range(len(points))] 
+	coeffs_polygon = distances/np.max(distances)
+
+	# construct shape array
+	shape_array = np.empty((len(points),2))
+	shape_array[:,0] = cumulative_angles
+	shape_array[:,1] = coeffs_polygon
+	return shape_array
