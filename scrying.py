@@ -3,26 +3,26 @@ from dataclasses import dataclass
 from bisect import bisect_left
 from skimage.segmentation import find_boundaries
 
+nucleation_rate_modes = ['constant']
+orientation_modes = ['random','updown']
+center_modes = ['anywhere','central']
+growth_rate_modes = ['constant','physical']
+snapshot_modes = ['none','time','area']
+get_image_options = ['final','snapshot','time']
+import_nucleation_data_position_orders = ['xy','yx']
+angle_units = ['degrees','radians','revolutions']
+angle_chiralities = ['cw','ccw']
+zero_directions = ['right','left','up', 'down']
+import_nucleation_data_final_column_types = ['time','size']
+get_grain_boundary_modes = ['all','internal','external']
+
 class Simulator: 
 	__arg_list = ['width','height','crystal_sides','shape_array','maximum_time',
 					'nucleation_rate','nucleation_rate_mode','maximum_crystals','center_mode','nucleation_region_percent',
 					'orientation_mode','orientation_precision',
 					'growth_rate','growth_rate_mode','periodic_boundary',
-					'snapshot_mode','snapshot_time','snapshot_coverage','end_after_snapshot',
-					'save_evolution', 'random_seed']
-
-	__nucleation_rate_modes = ['constant']
-	__orientation_modes = ['random','updown']
-	__center_modes = ['anywhere','central']
-	__growth_rate_modes = ['constant','physical']
-	__snapshot_modes = ['none','time','area']
-	__get_image_options = ['final','snapshot','time']
-	__import_nucleation_data_position_orders = ['xy','yx']
-	__angle_units = ['degrees','radians','revolutions']
-	__angle_chiralities = ['cw','ccw']
-	__zero_directions = ['right','left','up', 'down']
-	__import_nucleation_data_final_column_types = ['time','size']
-	__get_grain_boundary_modes = ['all','internal','external']
+					'snapshot_mode','snapshot_time','snapshot_coverage','end_after_snapshot','stop_nucleation_after_snapshot',
+					'save_evolution','random_seed']
 
 	def __init__(self, 
 		width: int = 128, height: int = 128, crystal_sides: int = 3, shape_array: np.array = None, maximum_time: int = 100, 
@@ -36,8 +36,8 @@ class Simulator:
 		self._RNG = np.random.default_rng(random_seed)
 
 		# default parameters
-		self.width = width 
-		self.height = height 
+		self.width = width
+		self.height = height
 		self.crystal_sides = crystal_sides
 		self.shape_array = shape_array 
 		if self.shape_array is not None: 
@@ -72,7 +72,10 @@ class Simulator:
 	def change_simulator_settings(self, **kwargs): 
 		for key in kwargs: 
 			if key in self.__arg_list: 
-				self.__setattr__(key,kwargs.get(key))
+				if key == 'random_seed':
+					self._RNG = np.random.default_rng(kwargs.get(key))
+				else:
+					self.__setattr__(key,kwargs.get(key))
 			else: 
 				print(f'WARNING: Unrecognized keyword argument \'{key}\' with value {kwargs.get(key)}')
 		
@@ -84,6 +87,9 @@ class Simulator:
 
 		if use_imported_data and (self._imported_data[self._imported_data[:,3] >= self.maximum_time].shape[0] > 0): 
 			print(f'WARNING: Simulation will conclude before the nucleation of all crystals in the imported data. Consider increasing maximum_time to at least {int(np.max([self._imported_data[:,3]]))}') 
+
+		if (self.snapshot_mode == 'time') and (self.maximum_time < self.snapshot_time): 
+			print(f'WARNING: Snapshot time exceeds maximum simulation time.')
 
 		self._reset_simulation_parameters() 
 		while (self._current_time < self.maximum_time): 
@@ -107,6 +113,8 @@ class Simulator:
 
 			self._current_time += 1 
 		else: 
+			if (not self._snapshot_taken) and (self.snapshot_mode != 'none'): 
+					print('WARNING: Snapshot criteria were not met during simulation.')
 			print('WARNING: Simulation concluded before reaching 100% area coverage. Consider increasing maximum_time.')
 
 		self._conclude_simulation()
@@ -140,7 +148,6 @@ class Simulator:
 			self._nucleate_new_crystal(new_center,new_orientation)
 
 	def _nucleate_crystals_from_data(self):
-		# if self._current_time in self._imported_data[:,3]:
 		new_crystals = self._imported_data[self._imported_data[:,3]==self._current_time]
 		for new_crystal in new_crystals: 
 			new_center = int(new_crystal[0]),int(new_crystal[1])
@@ -167,7 +174,7 @@ class Simulator:
 
 
 	def _take_snapshot(self): 
-		self._verify_string_variable_setting('snapshot_mode',self.snapshot_mode,self.__snapshot_modes,'none')
+		self._verify_string_variable_setting('snapshot_mode',self.snapshot_mode,snapshot_modes,'none')
 
 		if self.snapshot_mode == 'none': return 
 		if self._snapshot_taken: return 
@@ -182,7 +189,7 @@ class Simulator:
 		
 	# Main loop nested functions  		
 	def _get_current_nucleation_rate(self) -> float: 
-		self._verify_string_variable_setting('nucleation_rate_mode',self.nucleation_rate_mode,self.__nucleation_rate_modes,'constant')
+		self._verify_string_variable_setting('nucleation_rate_mode',self.nucleation_rate_mode,nucleation_rate_modes,'constant')
 
 		if self.nucleation_rate_mode == 'constant': return self.nucleation_rate
 		else: return self.nucleation_rate
@@ -190,7 +197,7 @@ class Simulator:
 	# This produces an appropriate center for a new crystal (y,x)
 	# It will return None if there is no available pixel for a center.
 	def _assign_new_center(self) -> tuple: 
-		self._verify_string_variable_setting('center_mode',self.center_mode,self.__center_modes,'anywhere')
+		self._verify_string_variable_setting('center_mode',self.center_mode,center_modes,'anywhere')
 
 		if self.center_mode == 'anywhere': 
 			if 0 not in self._image: return None 
@@ -208,7 +215,7 @@ class Simulator:
 
 	# This produces an appropriate orientation (in revolutions).
 	def _assign_new_orientation(self) -> float: 
-		self._verify_string_variable_setting('orientation_mode',self.orientation_mode,self.__orientation_modes,'random')
+		self._verify_string_variable_setting('orientation_mode',self.orientation_mode,orientation_modes,'random')
 
 		if self.orientation_mode == 'random': 
 			orientation_modifier = self._RNG.random()
@@ -288,7 +295,7 @@ class Simulator:
 
 
 	def _get_growth_rate(self, crystal: int) -> float: 
-		self._verify_string_variable_setting('growth_rate_mode',self.growth_rate_mode,self.__growth_rate_modes,'constant')
+		self._verify_string_variable_setting('growth_rate_mode',self.growth_rate_mode,growth_rate_modes,'constant')
 
 		if len(self._crystals[crystal].candidate_points) == 0: return 0
 
@@ -341,11 +348,11 @@ class Simulator:
 							   final_column: str = 'time', autoconfigure_snapshot: bool = False,
 							   has_header_row: bool = False, has_index_column: bool = True): 
 
-		self._verify_string_variable_setting('position_order',position_order,self.__import_nucleation_data_position_orders,'xy')
-		self._verify_string_variable_setting('angle_unit',angle_unit,self.__angle_units,'revolutions')
-		self._verify_string_variable_setting('chirality',chirality,self.__angle_chiralities,'cw')
-		self._verify_string_variable_setting('zero_direction',zero_direction,self.__zero_directions,'right')
-		self._verify_string_variable_setting('final_column',final_column,self.__import_nucleation_data_final_column_types,'time')
+		self._verify_string_variable_setting('position_order',position_order,import_nucleation_data_position_orders,'xy')
+		self._verify_string_variable_setting('angle_unit',angle_unit,angle_units,'revolutions')
+		self._verify_string_variable_setting('chirality',chirality,angle_chiralities,'cw')
+		self._verify_string_variable_setting('zero_direction',zero_direction,zero_directions,'right')
+		self._verify_string_variable_setting('final_column',final_column,import_nucleation_data_final_column_types,'time')
 
 		if has_header_row: first_row = 1 
 		else: first_row = 0
@@ -415,10 +422,10 @@ class Simulator:
 	def export_nucleation_data(self,position_order: str = 'xy',
 							   angle_unit: str = 'revolutions', chirality: str = 'cw', zero_direction: str = 'right') -> np.array:
 
-		self._verify_string_variable_setting('position_order',position_order,self.__import_nucleation_data_position_orders,'xy')
-		self._verify_string_variable_setting('angle_unit',angle_unit,self.__angle_units,'degrees')
-		self._verify_string_variable_setting('chirality',chirality,self.__angle_chiralities,'ccw')
-		self._verify_string_variable_setting('zero_direction',zero_direction,self.__zero_directions,'right')
+		self._verify_string_variable_setting('position_order',position_order,import_nucleation_data_position_orders,'xy')
+		self._verify_string_variable_setting('angle_unit',angle_unit,angle_units,'degrees')
+		self._verify_string_variable_setting('chirality',chirality,angle_chiralities,'ccw')
+		self._verify_string_variable_setting('zero_direction',zero_direction,zero_directions,'right')
 
 		data = np.zeros((self._current_crystals,5))
 		for i in range(1,self._current_crystals+1):
@@ -447,22 +454,22 @@ class Simulator:
 		return data
 
 	def get_image(self, mode: str ='final', time: int = None) -> np.array: 
-		if mode not in self.__get_image_options:
-			print(f'WARNING: \'{mode}\' is not a recognized option for get_image. Accepted options are: {[option for option in self.__get_image_options]}')
+		if mode not in get_image_options:
+			print(f'WARNING: \'{mode}\' is not a recognized option for get_image. Accepted options are: {[option for option in get_image_options]}')
 		
 		image = None
 
 		if (mode == 'time') or (time is not None): 
-			if self.save_evolution: image = self._image_evolution_array[time,:,:]
+			if self.save_evolution: image = self._image_evolution_array[time,:,:].copy()
 			else: print(f'WARNING: Time-series data has not been saved. Image at time {time} cannot be retrieved.') 
 		elif mode == 'final': 
-			image = self._image
+			image = self._image.copy()
 		elif mode == 'snapshot': 
-			image = self._snapshot
+			image = self._snapshot.copy()
 		return image
 
 	def get_image_evolution(self) -> np.array: 
-		if self.save_evolution: return self._image_evolution_array
+		if self.save_evolution: return self._image_evolution_array.copy()
 		else: 
 			print(f'WARNING: Time-series data has not been saved.')
 			return None
@@ -470,13 +477,13 @@ class Simulator:
 	def get_grain_structure(self, image: np.array, maximum_misorientation: float = 0, symmetry: int = 1) -> np.array:
 		symmetry_angle = round(1./symmetry,self.orientation_precision)
 		
-		crystal_to_orientation = dict({0:None})
+		crystal_to_orientation = dict({0:-1.})
 		orientations = set()
 		for i in range(1,len(self._crystals)): 
 			crystal_orientation = round((self._crystals[i].orientation)%(symmetry_angle),self.orientation_precision)
 			crystal_to_orientation[i] = crystal_orientation
 			orientations.add(crystal_orientation)
-		
+
 		sorted_orientations = sorted(list(orientations))
 
 		if maximum_misorientation > 0: 
@@ -506,12 +513,12 @@ class Simulator:
 				else: 
 					final_groups.append(initial_group)
 
-			orientations_to_group = dict({None: 0})
+			orientations_to_group = dict({-1.: 0})
 			for i in range(len(final_groups)): 
 				for j in range(len(final_groups[i])): orientations_to_group[(final_groups[i][j]%symmetry_angle)] = i+1
 
 		else: 
-			orientations_to_group = dict({None: 0})
+			orientations_to_group = dict({-1.: 0})
 			for i in range(len(orientations)): orientations_to_group[sorted_orientations[i]] = i+1
 
 		# DSM on stackoverflow: https://stackoverflow.com/questions/16992713/translate-every-element-in-numpy-array-according-to-key
@@ -527,7 +534,7 @@ class Simulator:
 	# "all" means that both internal and external boundaries are shown 
 	# Boundaries will be two pixels wide. 
 	def get_grain_boundaries(self, image: np.array, mode: str ='all') -> np.array: 
-		self._verify_string_variable_setting('mode',mode,self.__get_grain_boundary_modes,'all')
+		self._verify_string_variable_setting('mode',mode,get_grain_boundary_modes,'all')
 		if mode == 'external':
 			boundary_img = find_boundaries((image != 0),mode='thick')
 		elif mode == 'internal': 
@@ -560,7 +567,7 @@ class Crystal:
 
 # a function used to generate a shape array from a list of points 
 def get_shape_array(points: list) -> np.array: 
-	looped_points = points.copy()
+	looped_points = list(points).copy()
 	looped_points.append(points[0])
 	edge_vectors = [(np.subtract(looped_points[i+1],looped_points[i])) for i in range(len(points))] 
 	edge_vectors.append(edge_vectors[0]) # to allow for looping around the first corner 
