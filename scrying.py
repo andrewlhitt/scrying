@@ -74,7 +74,7 @@ class Simulator:
 		whether the simulation is terminated after the snapshot is taken 
 	stop_nucleation_after_snapshot : bool, default False 
 		whether nucleation events are prevented after the snapshot is taken 
-	save_evolution: bool, default False 
+	save_evolution: bool, default True 
 		whether the image at every time step is saved for later access via get_image_evolution(...) and get_image(time=...)
 	random_seed: int or float, optional
 		the seed used by the random number generator 
@@ -96,7 +96,7 @@ class Simulator:
 		orientation_mode: str = 'random', 
 		growth_rate: float = 1.0, growth_rate_mode: str = 'constant', periodic_boundary: bool = False, 
 		snapshot_mode: str = 'none', snapshot_time: int = 0, snapshot_area: float = 0.25, end_after_snapshot: bool = False, stop_nucleation_after_snapshot: bool = False,
-		save_evolution: bool = False, random_seed: int = None, orientation_precision: int = 5): 
+		save_evolution: bool = True, random_seed: int = None, orientation_precision: int = 5): 
 
 		# Initializing the random number generator
 		self._RNG = np.random.default_rng(random_seed)
@@ -135,7 +135,7 @@ class Simulator:
 		self.save_evolution = save_evolution 
 		self._imported_data = None 
 
-	def change_simulator_settings(self, **kwargs): 
+	def change_settings(self, **kwargs): 
 		"""
 		A generalized method for modifying the parameters of the simulator. 
 
