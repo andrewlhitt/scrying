@@ -150,6 +150,9 @@ class Simulator:
 			if key in self.__arg_list: 
 				if key == 'random_seed':
 					self._RNG = np.random.default_rng(kwargs.get(key))
+				elif key == 'shape_array':
+					self.shape_array = kwargs.get(key)
+					self.crystal_sides = self.shape_array.shape[0] 
 				else:
 					self.__setattr__(key,kwargs.get(key))
 			else: 
