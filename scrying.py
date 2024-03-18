@@ -29,7 +29,7 @@ class Simulator:
 		the vertical dimension of produced images
 	crystal_sides : int, default 3 
 		the number of sides of the crystal (overriden by `shape_array`, if used) 
-	shape_array : np.array, optional 
+	shape_array : numpy.array, optional 
 		an array describing the growth vectors from the center of a crystal 
 		can be produced via scrying.get_shape_array(...) for arbitrary, convex polygons 
 	maximum_time : int, default 100 
@@ -218,7 +218,7 @@ class Simulator:
 
 		Parameters
 		----------
-		nucleation_data : np.array 
+		nucleation_data : numpy.array 
 			the nucleation data, formatted as columns of [position1, position2, angle, time or size]
 		position_order : {'xy', 'yx'}
 			whether the first two columns are horizontal-then-vertical or the reverse 
@@ -257,7 +257,7 @@ class Simulator:
 		if has_index_column: first_column = 1
 		else: first_column = 0
 
-		data = nucleation_data[first_row:,first_column:]
+		data = nucleation_data[first_row:,first_column:].astype('float')
 		
 
 		if position_order == 'xy': data[:,[0,1]] = data[:,[1,0]].astype('int')
@@ -275,19 +275,21 @@ class Simulator:
 		elif zero_direction == 'left': angle_addend = 0.5
 		elif zero_direction == 'up': angle_addend = 0.75
 
-		data[:,2] = angle_addend + (angle_multiplier*data[:,2]/full_rotation)
-		
+		data[:,2] = angle_addend + (angle_multiplier*data[:,2]/full_rotation).astype('float')
+
 		# if data reports crystal size, calculates an approximate nucleation time for each crystal
 		# this assumes globally uniform growth rate 
 		if final_column == 'size': 
 			final_time = np.max(data[:,3])
 			data[:,3] = np.round((final_time - data[:,3])).astype('int')
+		else:
+			final_time = np.max(data[:,3])
 
-			# if autoconfigure is enabled, sets up the snapshot to capture the approximate image 
-			# that would have been used for the data measurement 
-			if autoconfigure_snapshot: 
-				self.snapshot_time = final_time 
-				self.snapshot_mode = 'time'
+		# if autoconfigure is enabled, sets up the snapshot to capture the approximate image 
+		# that would have been used for the data measurement 
+		if autoconfigure_snapshot: 
+			self.snapshot_time = final_time 
+			self.snapshot_mode = 'time'
 
 		self._imported_data = data 
 
@@ -310,7 +312,7 @@ class Simulator:
 
 		Returns 
 		-------
-		data : np.array
+		data : numpy.array
 			An array summarizing the nucleation information from the simulation
 			Row format is [index, center_x, center_y, orientation, nucleation_time]
 		
@@ -362,7 +364,7 @@ class Simulator:
 
 		Returns 
 		-------
-		image : np.array
+		image : numpy.array
 			A 2D array (y,x) showing the state of the simulation at a single time step.
 		
 		"""
@@ -386,7 +388,7 @@ class Simulator:
 		
 		Returns 
 		-------
-		np.array
+		numpy.array
 			A 3D array (t,y,x) containing the state of the simulation are every time step. 
 		
 		"""
@@ -400,7 +402,7 @@ class Simulator:
 			
 		Parameters
 		----------
-		image : np.array 
+		image : numpy.array 
 			The image of simulated crystals from get_image(...). 
 		maximum_misorientation : float, default 0 
 			The largest difference in orientation (in revolutions) between two crystals sharing a label. 
@@ -409,7 +411,7 @@ class Simulator:
 
 		Returns 
 		-------
-		image_groups : np.array
+		image_groups : numpy.array
 			An array where similarly oriented crystals share the same label. 
 
 		Notes
@@ -481,7 +483,7 @@ class Simulator:
 
 		Parameters
 		----------
-		image : np.array 
+		image : numpy.array 
 			The image of simulated crystals, usually from get_grain_structure(...).
 		mode : {'all', 'internal', 'external'}
 			Which boundaries will be identified 
@@ -491,7 +493,7 @@ class Simulator:
 
 		Returns 
 		-------
-		boundary_img : np.array
+		boundary_img : numpy.array
 			An array where boundary pixels are labeled 1 (all other pixels labeled 0).  
 
 		Notes
@@ -517,7 +519,7 @@ class Simulator:
 
 		Parameters
 		----------
-		image : np.array 
+		image : numpy.array 
 			The image of simulated crystals, usually from get_grain_structure(...).
 		mode : {'all', 'internal', 'external'}
 			see get_grain_boundaries(...)
@@ -820,7 +822,7 @@ def get_shape_array(points: list) -> np.array:
 
 	Returns 
 	-------
-	shape_array : np.array 
+	shape_array : numpy.array 
 		an array describing the orientations (in revolutions) and normalized distances of each side of the polygon
 
 	Notes
