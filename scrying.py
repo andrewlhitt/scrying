@@ -288,7 +288,7 @@ class Simulator:
 		# if autoconfigure is enabled, sets up the snapshot to capture the approximate image 
 		# that would have been used for the data measurement 
 		if autoconfigure_snapshot: 
-			self.snapshot_time = final_time 
+			self.snapshot_time = final_time - 1 
 			self.snapshot_mode = 'time'
 
 		self._imported_data = data 
@@ -375,7 +375,7 @@ class Simulator:
 
 		if (mode == 'time') or (time is not None): 
 			if self.save_evolution: image = self._image_evolution_array[time,:,:].copy()
-			raise ValueError(f'Time-series data has not been saved. Image at time {time} cannot be retrieved.') 
+			else: raise ValueError(f'Time-series data has not been saved. Image at time {time} cannot be retrieved.') 
 		elif mode == 'final': 
 			image = self._image.copy()
 		elif mode == 'snapshot': 
