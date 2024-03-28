@@ -152,7 +152,7 @@ class Simulator:
 					self._RNG = np.random.default_rng(kwargs.get(key))
 				elif key == 'shape_array':
 					self.shape_array = kwargs.get(key)
-					self.crystal_sides = self.shape_array.shape[0] 
+					if self.shape_array is not None: self.crystal_sides = self.shape_array.shape[0] 
 				else:
 					self.__setattr__(key,kwargs.get(key))
 			else: 
@@ -174,7 +174,7 @@ class Simulator:
 			# return 
 
 		if use_imported_data and (self._imported_data[self._imported_data[:,3] >= self.maximum_time].shape[0] > 0): 
-			warnings.warn(f'Simulation will conclude before the nucleation of all crystals in the imported data. Consider increasing maximum_time to at least {int(np.max([self._imported_data[:,3]]))}') 
+			warnings.warn(f'Simulation will conclude before the nucleation of all crystals in the imported data. Consider increasing maximum_time to at least {int(np.max([self._imported_data[:,3]]))}',stacklevel=2) 
 
 		#if (self.snapshot_mode == 'time') and (self.maximum_time < self.snapshot_time): 
 		#	warnings.warn(f'The snapshot time exceeds maximum simulation time.')
@@ -192,18 +192,18 @@ class Simulator:
 			# Criteria for ending the simulation early
 			if self._get_area_coverage() == 1.0: 
 				if (not self._snapshot_taken) and (self.snapshot_mode != 'none'): 
-					warnings.warn('Snapshot criteria were not met during simulation.')
+					warnings.warn('Snapshot criteria were not met during simulation.',stacklevel=2)
 				break 
 			if (self._snapshot_taken and self._current_crystals == 0 and self.stop_nucleation_after_snapshot): 
-				warnings.warn('Snapshot was taken with no crystals present, preventing the simulation from proceeding.')
+				warnings.warn('Snapshot was taken with no crystals present, preventing the simulation from proceeding.',stacklevel=2)
 				break
 			if (self._snapshot_taken and self.end_after_snapshot): break				
 
 			self._current_time += 1 
 		else: 
 			if (not self._snapshot_taken) and (self.snapshot_mode != 'none'): 
-					warnings.warn('Snapshot criteria were not met during simulation.')
-			warnings.warn('Simulation concluded before reaching 100% area coverage. Consider increasing maximum_time.')
+					warnings.warn('Snapshot criteria were not met during simulation.',stacklevel=2)
+			warnings.warn('Simulation concluded before reaching 100% area coverage. Consider increasing maximum_time.',stacklevel=2)
 
 		self._conclude_simulation()
 
@@ -259,7 +259,6 @@ class Simulator:
 
 		data = nucleation_data[first_row:,first_column:].astype('float')
 		
-
 		if position_order == 'xy': data[:,[0,1]] = data[:,[1,0]].astype('int')
 		elif position_order == 'yx': data[:,[0,1]] = data[:,[0,1]].astype('int')
 
@@ -394,7 +393,7 @@ class Simulator:
 		"""
 		if self.save_evolution: return self._image_evolution_array.copy()
 		else: 
-			raise ValueError(f'WARNING: Time-series data has not been saved.')
+			raise ValueError(f'Time-series data has not been saved.',stacklevel=2)
 
 	def get_grain_structure(self, image: np.array, maximum_misorientation: float = 0, symmetry: int = 1) -> np.array:
 		"""
@@ -645,11 +644,11 @@ class Simulator:
 	def _nucleate_new_crystal(self, center: tuple, orientation: float): 
 
 		if (center[0] > self.height) or (center[1] > self.width):
-			warnings.warn(f'A new crystal at {center} would have nucleated outside the image bounds.')
+			warnings.warn(f'A new crystal at {center} would have nucleated outside the image bounds.',stacklevel=2)
 			
 			return 
 		if self._image[center]: 
-			warnings.warn(f'A new crystal at {center} would have nucleated inside existing crystal {self._image[center]}')
+			warnings.warn(f'A new crystal at {center} would have nucleated inside existing crystal {self._image[center]}',stacklevel=2)
 			return 
 
 		else: 
@@ -725,6 +724,7 @@ class Simulator:
 		return growth_rate
 
 	def _check_candidate_point(self, candidate_point: tuple, size: float, crystal: int):
+	
 		if size < self._crystals[crystal].radii[-1]:
 			(ay,ax) = self._get_absolute_point(candidate_point,crystal)
 			if self._image[(ay,ax)]: 
