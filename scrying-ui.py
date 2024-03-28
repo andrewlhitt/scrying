@@ -34,7 +34,7 @@ class scryUI:
 
 	def _setup_ui(self):
 		self.root.title('SCRYiNG: A 2D Crystal Growth Simulator')
-		self.root.geometry('450x550')
+		self.root.geometry('450x520')
 		self.root.resizable(False,False)
 		self.root.columnconfigure(0, weight=1)
 		self.root.rowconfigure(0, weight=1)
@@ -523,7 +523,7 @@ class scryUI:
 		settings['snapshot_mode'] = self.snapshot_mode.get()
 		settings['snapshot_parameter'] = self.tickscale_snapshot_parameter.get()
 		settings['after_snapshot'] = self.after_snapshot.get()
-		settings['save_directory'] = self.entry_directory.get()
+		# settings['save_directory'] = self.entry_directory.get()
 		settings['number_of_simulations'] = self.tickscale_number_simulations.get()
 		settings['maximum_misorientation'] = self.tickscale_misorientation.get()
 
