@@ -5,7 +5,7 @@ from skimage.segmentation import find_boundaries
 import warnings 
 
 nucleation_rate_modes = ['constant']
-orientation_modes = ['random','updown']
+orientation_modes = ['random','updown','aligned']
 center_modes = ['anywhere','central']
 growth_rate_modes = ['constant','physical']
 snapshot_modes = ['none','time','area']
@@ -51,6 +51,7 @@ class Simulator:
 		a setting that describes how an orientation is assigned to a new crystal, relative to a base orientation determined at the start of the simulation. 
 		'random' means that the crystal will be randomly oriented relative to the base orientation
 		'updown' means that the crystal will be randomly oriented either along the base orientation or against the base orientation. 
+		'aligned' means that the crystals will be oriented along the base orientation
 	growth_rate : float, default 1.0 
 		the increase in each crystal's size each time step 
 	growth_rate_mode : {'constant', 'physical'}
@@ -282,7 +283,8 @@ class Simulator:
 			final_time = np.max(data[:,3])
 			data[:,3] = np.round((final_time - data[:,3])).astype('int')
 		else:
-			final_time = np.max(data[:,3])
+			pass
+			#final_time = np.max(data[:,3])
 
 		# if autoconfigure is enabled, sets up the snapshot to capture the approximate image 
 		# that would have been used for the data measurement 
@@ -440,27 +442,8 @@ class Simulator:
 			# add the smallest angle + symmetry to check for adjacency across the modular boundary 
 			sorted_orientations.append(round(sorted_orientations[0] + symmetry_angle,self.orientation_precision))
 			
-			# do an initial pass to attempt to break up the full set
-			orientation_diffs = np.diff(sorted_orientations)
-			split_indices = [i+1 for i in range(orientation_diffs.shape[0]-1) if orientation_diffs[i] > maximum_misorientation]
-			initial_groups = [sorted_orientations[i:j] for i, j in zip([None]+split_indices, split_indices+[-1])]
-			
-			# if first and last groups are sufficiently similar, merge into one group
-			if (orientation_diffs[-1] < maximum_misorientation) and len(initial_groups) > 1:
-				initial_groups[0] = [orientation-symmetry_angle for orientation in initial_groups[-1]] + initial_groups[0]
-				del initial_groups[-1]
-			
-			final_groups = list()
-			
-			for initial_group in initial_groups:
-				group_range = np.max(initial_group) - np.min(initial_group)
-
-				if group_range > maximum_misorientation:
-					# do complete-linkage agglomeration if necessary
-					clinked_groups = self._iteratively_clink_group(initial_group,maximum_misorientation)
-					final_groups.extend(clinked_groups)
-				else: 
-					final_groups.append(initial_group)
+			# perform complete-linkaged agglomeration
+			final_groups = self._clink_orientations(sorted_orientations,maximum_misorientation)
 
 			orientations_to_group = dict({-1.: 0})
 			for i in range(len(final_groups)): 
@@ -637,6 +620,8 @@ class Simulator:
 			orientation_modifier = self._RNG.random()
 		elif self.orientation_mode == 'updown': 
 			orientation_modifier = self._RNG.choice([0,1/(2*self.crystal_sides)])
+		elif self.orientation_mode == 'aligned': 
+			orientation_modifier = 0
 
 		new_orientation = round((self._primary_orientation + orientation_modifier)%1,self.orientation_precision)
 		return new_orientation
@@ -760,6 +745,58 @@ class Simulator:
 
 	# A periodic 1D implementation of complete-linkage clustering 
 	# Assumes an ordered list of angles  
+	def _clink_orientations(self, orientations: list, maximum_misorientation: float) -> list:
+		""" 
+		Performs complete-linkage clustering on a sorted group of numbers.
+
+		Parameters
+		----------
+		orientations : list of num
+			the numbers to be clustered, ordered from least to greatest
+		maximum_misorientation : float 
+			the largest permitted difference between two numbers in the same group
+
+		Returns 
+		-------
+		final_groups : list of list of num 
+			list of lists of orientations, wherein each group has no two numbers that are more than maximum_misorientation apart
+
+		Notes
+		-----
+		This algorithm loosely follows from: https://en.wikipedia.org/wiki/Complete-linkage_clustering 
+		Modifications were made due to the 1-D nature of the problem. 
+		
+		(1) calculate the differences between adjacent elements 
+		(2) split the list wherever the difference is greater than the maximum difference permitted
+		(3) check if the first and last sublists are close enough to be merged (periodic behavior)
+		(4) calculate the maximum difference between elements within each sublist
+		(4a) if this difference is less than maximum_misorientation, keep the sublist as is
+		(4b) otherwise, use farthest neighbors / complete-linkage agglomeration to resolve the sublist
+		 
+		""" 
+		orientation_diffs = np.diff(orientations)
+		split_indices = [i+1 for i in range(orientation_diffs.shape[0]-1) if orientation_diffs[i] > maximum_misorientation]
+		initial_groups = [orientations[i:j] for i, j in zip([None]+split_indices, split_indices+[-1])]
+				
+		# if first and last groups are sufficiently similar, merge into one group
+		if (orientation_diffs[-1] < maximum_misorientation) and len(initial_groups) > 1:
+			initial_groups[0] = [orientation-symmetry_angle for orientation in initial_groups[-1]] + initial_groups[0]
+			del initial_groups[-1]
+		
+		final_groups = list()
+		
+		for initial_group in initial_groups:
+			group_range = np.max(initial_group) - np.min(initial_group)
+
+			if group_range > maximum_misorientation:
+				# do complete-linkage agglomeration if necessary
+				clinked_groups = self._iteratively_clink_group(initial_group,maximum_misorientation)
+				final_groups.extend(clinked_groups)
+			else: 
+				final_groups.append(initial_group)
+
+		return final_groups
+
 	def _iteratively_clink_group(self, group: list, maximum_misorientation: float) -> list:
 		""" 
 		Performs farthest neighbor / complete-linkage clustering on a group of numbers.
