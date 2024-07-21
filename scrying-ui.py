@@ -22,6 +22,7 @@ class scryUI:
 	def __init__(self, root):
 		self.root = root 
 		self.simulator = scrying.Simulator(save_evolution=True)
+		self.shape_simulator = scrying.Simulator(width=64,height=64,snapshot_mode='area',snapshot_area=0.2,after_snapshot_behavior='stop')
 		self.imported_shape = None 
 		self.imported_nucleation_data = None 
 		self.crystal_sides = self.__initial_crystal_sides 
@@ -33,7 +34,7 @@ class scryUI:
 		self._setup_ui()
 
 	def _setup_ui(self):
-		self.root.title('SCRYiNG: A 2D Crystal Growth Simulator')
+		self.root.title('SCRYiNG: A 2D Polycrystal Growth Simulator')
 		self.root.geometry('450x520')
 		self.root.resizable(False,False)
 		self.root.columnconfigure(0, weight=1)
@@ -150,6 +151,7 @@ class scryUI:
 		self.shape_preview=tk.Label(self.frame_growth,image=self.blank_image_small) #,text='Early Stage',compound='center')
 		self.shape_preview.image = self.blank_image_small
 		self.shape_preview.grid(row=0,column=2,rowspan=3,sticky='e')
+		self._run_shape_simulation()
 
 		# Save Parameters
 		# - Snapshot Mode
@@ -175,10 +177,9 @@ class scryUI:
 
 		ttk.Label(self.frame_snapshot,text='After the Snapshot...').grid(row=2,column=0)
 		self.after_snapshot = tk.StringVar()
-		self.after_snapshot.set('disable nucleation')
-		self.simulator.change_settings(end_after_snapshot=False)
-		self.simulator.change_settings(stop_nucleation_after_snapshot=True)
-		self.after_snapshot_menu = ttk.OptionMenu(self.frame_snapshot,self.after_snapshot,'disable nucleation',*['continue','disable nucleation','stop'], command = self._update_after_snapshot_callback)
+		self.after_snapshot.set('grow')
+		self.simulator.change_settings(after_snapshot_behavior='grow')
+		self.after_snapshot_menu = ttk.OptionMenu(self.frame_snapshot,self.after_snapshot,'grow',*scrying.after_snapshot_behaviors, command = self._update_after_snapshot_callback)
 		# self.after_snapshot.set('disable nucleation')
 		self.after_snapshot_menu.grid(row=2,column=1)
 
@@ -321,6 +322,23 @@ class scryUI:
 				self.tickscale_misorientation.configure(resolution=5,from_=0,to=360)
 				self.tickscale_snapshot_parameter.set(0)
 
+		self._run_shape_simulation()
+
+	def _run_shape_simulation(self): 
+		shape_nucleation_data =  np.array([[32,32,0.5,0]])
+
+		self.shape_simulator.change_settings(crystal_sides = self.crystal_sides)
+		self.shape_simulator.change_settings(shape_array = self.shape_array)
+
+		self.shape_simulator.import_nucleation_data(shape_nucleation_data,has_index_column=False)
+		self.shape_simulator.run_simulation(use_imported_data=True)
+		new_shape_preview = self._photo_image(self.shape_simulator.get_image('snapshot'))
+		new_shape_preview = self._resizeImage(new_shape_preview,64,64)
+		self.shape_preview.configure(image=new_shape_preview)
+		self.shape_preview.image = new_shape_preview
+
+
+
 	def _update_snapshot_mode_callback(self,*args):
 
 		if self.snapshot_mode.get() == 'area':
@@ -335,14 +353,11 @@ class scryUI:
 	def _update_after_snapshot_callback(self,*args):
 
 		if self.after_snapshot.get() == 'continue':
-			self.simulator.change_settings(end_after_snapshot=False)
-			self.simulator.change_settings(stop_nucleation_after_snapshot=False)
-		elif self.after_snapshot.get() == 'disable nucleation':
-			self.simulator.change_settings(end_after_snapshot=False)
-			self.simulator.change_settings(stop_nucleation_after_snapshot=True)
+			self.simulator.change_settings(after_snapshot_behavior='continue')
+		elif self.after_snapshot.get() == 'grow':
+			self.simulator.change_settings(after_snapshot_behavior='grow')
 		elif self.after_snapshot.get() == 'stop':
-			self.simulator.change_settings(end_after_snapshot=True)
-			self.simulator.change_settings(stop_nucleation_after_snapshot=True)
+			self.simulator.change_settings(after_snapshot_behavior='stop')
 
 	def _button_preview_simulation(self): 
 		self._run_simulation(show_result = True, save_result = False)
@@ -523,7 +538,7 @@ class scryUI:
 		settings['snapshot_mode'] = self.snapshot_mode.get()
 		settings['snapshot_parameter'] = self.tickscale_snapshot_parameter.get()
 		settings['after_snapshot'] = self.after_snapshot.get()
-		# settings['save_directory'] = self.entry_directory.get()
+		settings['save_directory'] = self.entry_directory.get()
 		settings['number_of_simulations'] = self.tickscale_number_simulations.get()
 		settings['maximum_misorientation'] = self.tickscale_misorientation.get()
 

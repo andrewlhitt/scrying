@@ -9,6 +9,7 @@ orientation_modes = ['random','updown','aligned']
 center_modes = ['anywhere','central']
 growth_rate_modes = ['constant','physical']
 snapshot_modes = ['none','time','area']
+after_snapshot_behaviors = ['continue', 'grow', 'stop']
 get_image_options = ['final','snapshot','time']
 import_nucleation_data_position_orders = ['xy','yx']
 angle_units = ['degrees','radians','revolutions']
@@ -71,10 +72,11 @@ class Simulator:
 		see `snapshot_mode` 
 	snapshot_area : float, optional
 		see `snapshot_mode` 
-	end_after_snapshot : bool, default False 
-		whether the simulation is terminated after the snapshot is taken 
-	stop_nucleation_after_snapshot : bool, default False 
-		whether nucleation events are prevented after the snapshot is taken 
+	after_snapshot_behavior: {'continue', 'grow', 'stop'}
+		a setting that describes how the simulation behaves after the snapshot is taken 
+		'continue' means nothing changes after the snapshot 
+		'growth' means that nucleation will stop, and only growth steps will continue 
+		'stop' means that the simulation terminates early  
 	save_evolution: bool, default True 
 		whether the image at every time step is saved for later access via get_image_evolution(...) and get_image(time=...)
 	random_seed: int or float, optional
@@ -88,7 +90,7 @@ class Simulator:
 					'nucleation_rate','nucleation_rate_mode','maximum_crystals','center_mode','nucleation_region_percent',
 					'orientation_mode',
 					'growth_rate','growth_rate_mode','periodic_boundary',
-					'snapshot_mode','snapshot_time','snapshot_area','end_after_snapshot','stop_nucleation_after_snapshot',
+					'snapshot_mode','snapshot_time','snapshot_area','after_snapshot_behavior',
 					'save_evolution','random_seed','orientation_precision']
 
 	def __init__(self, 
@@ -96,7 +98,7 @@ class Simulator:
 		nucleation_rate: float = 1.0, nucleation_rate_mode: str = 'constant', maximum_crystals: int = 5, center_mode: str = 'anywhere', nucleation_region_percent: float = 0.0,
 		orientation_mode: str = 'random', 
 		growth_rate: float = 1.0, growth_rate_mode: str = 'constant', periodic_boundary: bool = False, 
-		snapshot_mode: str = 'none', snapshot_time: int = 0, snapshot_area: float = 0.25, end_after_snapshot: bool = False, stop_nucleation_after_snapshot: bool = False,
+		snapshot_mode: str = 'none', snapshot_time: int = 0, snapshot_area: float = 0.25, after_snapshot_behavior: str = 'continue',
 		save_evolution: bool = True, random_seed: int = None, orientation_precision: int = 5): 
 
 		# Initializing the random number generator
@@ -129,8 +131,7 @@ class Simulator:
 		self.snapshot_mode = snapshot_mode.lower()
 		self.snapshot_time = snapshot_time
 		self.snapshot_area = snapshot_area
-		self.end_after_snapshot = end_after_snapshot
-		self.stop_nucleation_after_snapshot = stop_nucleation_after_snapshot
+		self.after_snapshot_behavior = after_snapshot_behavior
 
 		# data parameters
 		self.save_evolution = save_evolution 
@@ -195,10 +196,10 @@ class Simulator:
 				if (not self._snapshot_taken) and (self.snapshot_mode != 'none'): 
 					warnings.warn('Snapshot criteria were not met during simulation.',stacklevel=2)
 				break 
-			if (self._snapshot_taken and self._current_crystals == 0 and self.stop_nucleation_after_snapshot): 
+			if (self._snapshot_taken and self._current_crystals == 0 and self.after_snapshot_behavior == 'grow'): 
 				warnings.warn('Snapshot was taken with no crystals present, preventing the simulation from proceeding.',stacklevel=2)
 				break
-			if (self._snapshot_taken and self.end_after_snapshot): break				
+			if (self._snapshot_taken and self.after_snapshot_behavior == 'stop'): break				
 
 			self._current_time += 1 
 		else: 
@@ -534,7 +535,7 @@ class Simulator:
  
 
 	def _nucleate_crystals(self):
-		if self._snapshot_taken and self.stop_nucleation_after_snapshot: return 
+		if self._snapshot_taken and self.after_snapshot_behavior != 'continue': return 
 		new_crystals = self._RNG.poisson(self._get_current_nucleation_rate())
 		for new_crystal in range(new_crystals):
 			if self._current_crystals >= self.maximum_crystals: return 
