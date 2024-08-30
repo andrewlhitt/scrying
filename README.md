@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/763756621.svg)](https://zenodo.org/doi/10.5281/zenodo.13586877)
+
 SCRYiNG (Simulated CRYstal Nucleation and Growth) is a Python package for the simulation of 2-dimensional crystal growth. 
 
 ### Overview
