@@ -284,8 +284,7 @@ class Simulator:
 			final_time = np.max(data[:,3])
 			data[:,3] = np.round((final_time - data[:,3])).astype('int')
 		else:
-			pass
-			#final_time = np.max(data[:,3])
+			final_time = np.max(data[:,3])
 
 		# if autoconfigure is enabled, sets up the snapshot to capture the approximate image 
 		# that would have been used for the data measurement 
