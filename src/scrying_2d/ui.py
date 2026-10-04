@@ -1,4 +1,5 @@
-import scrying 
+from . import core as scrying
+ 
 import tkinter as tk 
 from tkinter import ttk 
 import ttkwidgets as ttkw

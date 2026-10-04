@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "SCRYiNG_2D"
+version = "1.1.1"
+authors = [
+  { name="Andrew L. Hitt", email="andrew@andrew.us" },
+]
+description = "A lightweight package for 2D crystal growth simulation"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+dependencies = [
+  "numpy >= 1.20.1",
+  "scikit-image >=0.19.2",
+]
+
+[project.optional-dependencies]
+gui = [
+	"ttkwidgets >= 0.13.0",
+	"matplotlib >= 3.5.0",
+	"tifffile >= 2022.3.16",
+	"array2gif >= 1.0.4",
+]
+
+
+[project.urls]
+Homepage = "https://github.com/andrewlhitt/scrying"
+Issues = "https://github.com/andrewlhitt/scrying/issues"
