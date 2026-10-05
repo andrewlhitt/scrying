@@ -10,7 +10,7 @@ plugins:
   - mkdocs-autoapi:
       autoapi_dir: src
       autoapi_ignore:
-        - **/ui.py
+        - '**/ui.py'
   - mkdocstrings:
       handlers:
         python:
