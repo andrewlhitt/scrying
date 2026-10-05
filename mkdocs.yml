@@ -3,9 +3,10 @@ theme: readthedocs
 
 nav: 
   - Introduction: 'index.md'
-  - API Reference: autoapi/ 
+  # - API Reference: autoapi/ 
 
 plugins: 
+  - search 
   - mkdocs-autoapi:
       autoapi_dir: src
   - mkdocstrings:
