@@ -3,12 +3,12 @@ theme: readthedocs
 
 nav: 
   - API Reference: autoapi/ 
-  
+
 plugins: 
   - mkdocs-autoapi:
-    autoapi_dir: src 
+      autoapi_dir: src
   - mkdocstrings:
-    handers:
-      python:
-        paths:
-          - src
+      handlers:
+        python:
+          paths:
+            - src
