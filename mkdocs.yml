@@ -6,9 +6,11 @@ nav:
   # - API Reference: autoapi/ 
 
 plugins: 
-  - search 
+  - search  
   - mkdocs-autoapi:
       autoapi_dir: src
+      autoapi_ignore:
+        - **/ui.py
   - mkdocstrings:
       handlers:
         python:

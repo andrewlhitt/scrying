@@ -22,7 +22,7 @@ class Simulator:
 	""" 
 	An object that handles the full simulation process.
 
-	Attributes
+	Parameters
 	----------
 	width : int, default 128 
 		the horizontal dimension of produced images 
@@ -902,7 +902,7 @@ class _Crystal:
 	""" 
 	A dataclass that stores all information of a given crystal. 
 
-	Attributes
+	Parameters
 	----------
 	center : tuple of int 
 		the geometric center of the crystal in the form (y,x)
