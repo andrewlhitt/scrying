@@ -12,7 +12,7 @@ pip install scrying_2d
 ## Getting Started  
 A variety of simple examples are provided in [this notebook](/examples/example.ipynb). 
 
-A graphical user interface that offers most of the core features is also available. 
+A graphical user interface with most of the core features is also available. 
 ```bash
 pip install scrying_2d[gui]
 
