@@ -10,7 +10,7 @@ pip install scrying_2d
 ```
 
 ## Getting Started  
-A variety of simple examples are shown, see [this notebook](https://github.com/andrewlhitt/scrying/examples/example.ipynb). 
+A variety of simple examples are provided in [this notebook](https://github.com/andrewlhitt/scrying/examples/example.ipynb). 
 
 A graphical user interface that offers most of the core features is also available. 
 ```bash
