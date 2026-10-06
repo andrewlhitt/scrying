@@ -548,7 +548,7 @@ class scryUI:
 			pickle.dump(settings,f, pickle.HIGHEST_PROTOCOL)
 
 
-if __name__ == '__main__':
+def main():
 	root = tk.Tk()
 	scryUI(root)
 	root.mainloop()

@@ -31,6 +31,8 @@ gui = [
 	"array2gif >= 1.0.4",
 ]
 
+[project.scripts]
+scryUI = "scrying_2d.ui:main"
 
 [project.urls]
 Homepage = "https://github.com/andrewlhitt/scrying"

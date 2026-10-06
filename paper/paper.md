@@ -6,7 +6,7 @@ tags:
   - materials science
 authors:
   - name: Andrew L. Hitt
-    orcid: 0000-0000-0000-0000
+    # orcid: 0000-0000-0000-0000
     affiliation: 1
   - name: Ming Tang 
     orcid: 0000-0001-7194-3485
