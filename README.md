@@ -27,8 +27,8 @@ scryUI
 ```
 
 ### Links 
-Homepage = "https://github.com/andrewlhitt/scrying"
-Documentation = "https://scrying.readthedocs.io/"
-Issues = "https://github.com/andrewlhitt/scrying/issues"
+* Homepage = "https://github.com/andrewlhitt/scrying"
+* Documentation = "https://scrying.readthedocs.io/"
+* Issues = "https://github.com/andrewlhitt/scrying/issues"
 
 
