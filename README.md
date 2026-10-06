@@ -6,7 +6,7 @@
 SCRYiNG can be installed via: 
 
 ```bash
-pip install scrying_2d 
+pip install scrying-2d 
 ```
 
 ## Getting Started  
@@ -14,7 +14,7 @@ A variety of simple examples are provided in [this notebook](/examples/example.i
 
 A graphical user interface with most of the core features is also available. 
 ```bash
-pip install scrying_2d[gui]
+pip install scrying-2d[gui]
 
 scryUI 
 ```
