@@ -2,13 +2,6 @@
 
 `SCRYiNG` (Simulated CRYstal Nucleation and Growth) package is a lightweight Python platform for simulating 2D polycrystalline growth. 
 
-## Motivation
-The substantial effects of the growth process on the performance of 2D materials are often complex and difficult to quantify experimentally. While simulation and modeling have proven to be effective techniques, most of the popular methods (e.g. kinetic Monte Carlo, molecular dynamics) are computationally intensive, especially when scaled up from their native atomic scale to the increasingly important microstructural scale. 
-
-`SCRYiNG` offers a computationally-light alternative to existing materials science simulation technologies through a simple, geometrically derived modeling mechanism. `SCRYiNG`'s high throughput allows it to support research into materials synthesis in a variety of ways, including parametric case studies, predictive machine learning models, real-time digitial twin strategies, and new analytical techniques. 
-
-`SCRYiNG` is designed to be an accessible option for materials science researchers, even those without substantial coding or simulation backgrounds. The scripting version offers a simple object-oriented framework, and a graphical user interface version with many of the core features facilitates use for those with no programming experience. 
-
 ## Installation 
 SCRYiNG can be installed via: 
 
@@ -30,5 +23,12 @@ scryUI
 * Homepage = "https://github.com/andrewlhitt/scrying"
 * Documentation = "https://scrying.readthedocs.io/"
 * Issues = "https://github.com/andrewlhitt/scrying/issues"
+
+## Motivation
+The substantial effects of the growth process on the performance of 2D materials are often complex and difficult to quantify experimentally. While simulation and modeling have proven to be effective techniques, most of the popular methods (e.g. kinetic Monte Carlo, molecular dynamics) are computationally intensive, especially when scaled up from their native atomic scale to the increasingly important microstructural scale. 
+
+`SCRYiNG` offers a computationally-light alternative to existing materials science simulation technologies through a simple, geometrically derived modeling mechanism. `SCRYiNG`'s high throughput allows it to support research into materials synthesis in a variety of ways, including parametric case studies, predictive machine learning models, real-time digitial twin strategies, and new analytical techniques. 
+
+`SCRYiNG` is designed to be an accessible option for materials science researchers, even those without substantial coding or simulation backgrounds. The scripting version offers a simple object-oriented framework, and a graphical user interface version with many of the core features facilitates use for those with no programming experience. 
 
 
