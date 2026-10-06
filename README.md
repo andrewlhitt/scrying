@@ -20,9 +20,9 @@ scryUI
 ```
 
 ## Links 
-* Homepage = "https://github.com/andrewlhitt/scrying"
-* Documentation = "https://scrying.readthedocs.io/"
-* Issues = "https://github.com/andrewlhitt/scrying/issues"
+* Homepage: https://github.com/andrewlhitt/scrying
+* Documentation: https://scrying.readthedocs.io/
+* Issues: https://github.com/andrewlhitt/scrying/issues
 
 ## Motivation
 The substantial effects of the growth process on the performance of 2D materials are often complex and difficult to quantify experimentally. While simulation and modeling have proven to be effective techniques, most of the popular methods (e.g. kinetic Monte Carlo, molecular dynamics) are computationally intensive, especially when scaled up from their native atomic scale to the increasingly important microstructural scale. 
