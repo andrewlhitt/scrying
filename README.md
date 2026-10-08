@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13621902.svg)](https://doi.org/10.5281/zenodo.13621902)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23245916.svg)](https://doi.org/10.5281/zenodo.23245916)
 
 `SCRYiNG` (Simulated CRYstal Nucleation and Growth) package is a lightweight Python platform for simulating 2D polycrystalline growth. 
 
